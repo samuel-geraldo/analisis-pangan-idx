@@ -108,4 +108,4 @@ Project ini dibuat untuk tujuan pembelajaran dan portofolio analisis data, bukan
 
 ## Author
 
-_(Nama kamu)_ — dibuat sebagai bagian dari persiapan portofolio data analyst/data scientist.
+**Samuel Geraldo Tobia Lumika** — dibuat sebagai bagian dari persiapan portofolio data analyst/data scientist.
