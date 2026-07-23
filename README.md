@@ -2,6 +2,8 @@
 
 Project analisis data untuk melihat bagaimana kinerja saham-saham di rantai pasok pangan (hulu, menengah, hilir) yang tercatat di Bursa Efek Indonesia (IDX), dalam konteks isu kebijakan swasembada pangan nasional.
 
+> 📓 **Mau lihat analisis paling lengkap?** Buka [`analisis_lanjutan.ipynb`](analisis_lanjutan.ipynb) — notebook ini melengkapi dashboard & query SQL dengan analisis statistik yang lebih dalam: heatmap korelasi antar saham, Sharpe Ratio, Max Drawdown, uji-t signifikansi perbedaan return antar periode, dan model forecasting return berbasis regresi linear.
+
 ## Latar Belakang
 
 Swasembada pangan merupakan salah satu isu kebijakan ekonomi yang terus jadi perhatian di Indonesia. Sebagai negara agraris dengan pasar modal yang aktif, pergerakan kebijakan pangan berpotensi memengaruhi kinerja saham-saham di sektor terkait — mulai dari perusahaan perkebunan/pertanian (hulu), peternakan dan pakan ternak (menengah), hingga produsen makanan olahan (hilir).
@@ -119,7 +121,7 @@ Dashboard-nya dibuat di Power BI (`dashboard pangan.pbix`), menggabungkan ringka
 
 ## 🐛 Kendala & Debugging
 
-Dua bug yang cukup bikin bingung selama pengerjaan, siapa tahu berguna buat yang mengalami hal serupa:
+Beberapa bug yang cukup bikin bingung selama pengerjaan, siapa tahu berguna buat yang mengalami hal serupa:
 
 **1. Power BI salah baca angka desimal dari CSV Python — jadi miliaran**
 
@@ -132,6 +134,12 @@ Fix-nya ternyata sederhana: saat import CSV di Power BI (Get Data → Text/CSV),
 yfinance versi yang saya pakai ternyata mengembalikan dataframe dengan kolom MultiIndex (kombinasi nama atribut seperti "Close" dan ticker), bukan kolom flat biasa — meski cuma minta data satu ticker sekalipun. Kalau tidak ditangani, proses rename kolom ke nama ticker jadi tidak konsisten, dan waktu di-mapping ke dictionary `label_tahap` (penanda tahap rantai pasok: hulu/menengah/hilir), beberapa ticker jadi tidak ketemu — hasilnya beberapa saham malah tidak masuk kategori tahap rantai pasok mana pun di ringkasan akhir.
 
 Solusinya: tambahkan pengecekan `isinstance(df.columns, pd.MultiIndex)` lalu flatten dengan `get_level_values(0)` sebelum kolom "Close" diambil dan di-rename. Bisa dilihat di fungsi `ambil_data()` pada `analisis_swasembada_pangan.py`. Setelah di-flatten, mapping ke tahap rantai pasok jadi konsisten lagi.
+
+**3. Karakter khusus rusak jadi `�` saat menulis teks lewat heredoc Bash di Windows**
+
+Waktu mengisi teks markdown ke notebook (`analisis_lanjutan.ipynb`) lewat script Python yang dijalankan via heredoc di Git Bash (Windows), karakter khusus seperti en dash (–), em dash (—), kutip pintar (‘ dan ’), dan superscript (²) malah berubah jadi karakter pengganti `�` (U+FFFD) di file hasil akhir. Awalnya sempat terlihat baik-baik saja di layar, dan baru ketahuan setelah dicek ulang isi file-nya secara terprogram.
+
+Penyebabnya: heredoc Bash di lingkungan Windows ini salah men-decode konten UTF-8 sebelum diteruskan ke Python, jadi karakter multi-byte di luar ASCII rusak duluan sebelum sempat ditulis ke file. Fix-nya: hindari heredoc untuk konten yang mengandung karakter non-ASCII — tulis script Python-nya sebagai file `.py` biasa terlebih dahulu (encoding UTF-8 dijamin oleh editor/tool penulis file), baru dijalankan. Setelah itu semua karakter khusus tersimpan utuh.
 
 ## 💡 Temuan Utama
 
