@@ -50,7 +50,7 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 - **scikit-learn, scipy** — model forecasting (regresi linear) dan uji statistik (uji-t)
 - **seaborn** — visualisasi statistik (heatmap korelasi, dll.) di notebook
 - **Jupyter Notebook** — analisis lanjutan interaktif (`analisis_lanjutan.ipynb`)
-- **Power BI / Tableau Public** — visualisasi dan dashboard
+- **Power BI** — visualisasi dan dashboard
 
 ## Cara Menjalankan
 
@@ -67,7 +67,7 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
    - `return_harian_pangan.csv` — return harian tiap saham
    - `ringkasan_sektor_pangan.csv` — ringkasan return, volatilitas, dan return kumulatif per tahap rantai pasok dan per periode
    - `indikator_teknikal_pangan.csv` — indikator analisis teknikal (MA20, MA50, RSI14) per saham per tanggal
-4. Tinggal import `ringkasan_sektor_pangan.csv` dan `indikator_teknikal_pangan.csv` ke Power BI/Tableau untuk bikin dashboard-nya.
+4. Tinggal import `ringkasan_sektor_pangan.csv` dan `indikator_teknikal_pangan.csv` ke Power BI untuk bikin dashboard-nya.
 5. Untuk analisis SQL, bangun database SQLite-nya dari 4 CSV di atas:
    ```bash
    python buat_database.py
@@ -85,8 +85,16 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ├── return_harian_pangan.csv          # output: return harian
 ├── ringkasan_sektor_pangan.csv       # output: ringkasan siap dashboard
 ├── indikator_teknikal_pangan.csv     # output: indikator teknikal (MA20, MA50, RSI14)
+├── buat_database.py                  # script bangun database SQLite dari 4 CSV di atas
+├── queries.sql                       # 5 contoh query analisis SQL
+├── pangan_idx.db                     # database SQLite hasil buat_database.py
+├── analisis_lanjutan.ipynb           # notebook analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting)
+├── chart_return_kumulatif.html       # chart interaktif return kumulatif (HTML mandiri)
 ├── dashboard_pangan.pbix             # file dashboard Power BI
 ├── dashboard_screenshot.png          # screenshot dashboard
+├── requirements.txt                  # daftar dependency Python
+├── LICENSE                           # lisensi MIT
+├── .gitignore                        # file/folder yang diabaikan git
 └── README.md
 ```
 
