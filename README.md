@@ -2,6 +2,22 @@
 
 Project analisis data untuk melihat bagaimana kinerja saham-saham di rantai pasok pangan (hulu, menengah, hilir) yang tercatat di Bursa Efek Indonesia (IDX), dalam konteks isu kebijakan swasembada pangan nasional.
 
+## Daftar Isi
+
+- [Latar Belakang](#latar-belakang)
+- [Pertanyaan Analisis](#pertanyaan-analisis)
+- [Ruang Lingkup Saham](#ruang-lingkup-saham)
+- [Tools & Teknologi](#tools--teknologi)
+- [Cara Menjalankan](#cara-menjalankan)
+- [Struktur File](#struktur-file)
+- [Indikator Analisis Teknikal](#indikator-analisis-teknikal)
+- [Analisis SQL](#analisis-sql)
+- [Dashboard](#dashboard)
+- [Kendala & Debugging](#-kendala--debugging)
+- [Temuan Utama](#-temuan-utama)
+- [Catatan](#catatan)
+- [Author](#author)
+
 > 📓 **Mau lihat analisis paling lengkap?** Buka [`analisis_lanjutan.ipynb`](analisis_lanjutan.ipynb) — notebook ini melengkapi dashboard & query SQL dengan analisis statistik yang lebih dalam: heatmap korelasi antar saham, Sharpe Ratio, Max Drawdown, uji-t signifikansi perbedaan return antar periode, dan model forecasting return berbasis regresi linear.
 
 ## Latar Belakang
@@ -30,14 +46,17 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ## Tools & Teknologi
 
 - **Python** (pandas, yfinance) — pengambilan & pengolahan data
-- **SQL/SQLite** *(opsional)* — query & penyimpanan data terstruktur
+- **SQL/SQLite** — query & penyimpanan data terstruktur
+- **scikit-learn, scipy** — model forecasting (regresi linear) dan uji statistik (uji-t)
+- **seaborn** — visualisasi statistik (heatmap korelasi, dll.) di notebook
+- **Jupyter Notebook** — analisis lanjutan interaktif (`analisis_lanjutan.ipynb`)
 - **Power BI / Tableau Public** — visualisasi dan dashboard
 
 ## Cara Menjalankan
 
 1. Install dependency-nya dulu:
    ```bash
-   pip install yfinance pandas
+   pip install -r requirements.txt
    ```
 2. Lalu jalankan script pengambilan data:
    ```bash
@@ -49,6 +68,14 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
    - `ringkasan_sektor_pangan.csv` — ringkasan return, volatilitas, dan return kumulatif per tahap rantai pasok dan per periode
    - `indikator_teknikal_pangan.csv` — indikator analisis teknikal (MA20, MA50, RSI14) per saham per tanggal
 4. Tinggal import `ringkasan_sektor_pangan.csv` dan `indikator_teknikal_pangan.csv` ke Power BI/Tableau untuk bikin dashboard-nya.
+5. Untuk analisis SQL, bangun database SQLite-nya dari 4 CSV di atas:
+   ```bash
+   python buat_database.py
+   ```
+6. Untuk analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting), jalankan notebooknya:
+   ```bash
+   jupyter nbconvert --to notebook --execute --inplace analisis_lanjutan.ipynb
+   ```
 
 ## Struktur File
 
@@ -58,7 +85,7 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ├── return_harian_pangan.csv          # output: return harian
 ├── ringkasan_sektor_pangan.csv       # output: ringkasan siap dashboard
 ├── indikator_teknikal_pangan.csv     # output: indikator teknikal (MA20, MA50, RSI14)
-├── dashboard pangan.pbix             # file dashboard Power BI
+├── dashboard_pangan.pbix             # file dashboard Power BI
 ├── dashboard_screenshot.png          # screenshot dashboard
 └── README.md
 ```
@@ -115,7 +142,7 @@ Script ini akan membuat `pangan_idx.db` dari 4 CSV yang ada, lalu langsung menja
 
 ## Dashboard
 
-Dashboard-nya dibuat di Power BI (`dashboard pangan.pbix`), menggabungkan ringkasan return/volatilitas per periode dengan indikator teknikal (harga + MA20/MA50, serta RSI14) untuk tiap saham.
+Dashboard-nya dibuat di Power BI (`dashboard_pangan.pbix`), menggabungkan ringkasan return/volatilitas per periode dengan indikator teknikal (harga + MA20/MA50, serta RSI14) untuk tiap saham.
 
 ![Dashboard Analisis Saham Pangan](dashboard_screenshot.png)
 
