@@ -73,6 +73,44 @@ Ketiganya dihitung per saham per tanggal dan disimpan di `indikator_teknikal_pan
 
 > Perlu digarisbawahi: indikator teknikal di sini murni untuk pembelajaran/portofolio analisis data, bukan rekomendasi jual/beli saham.
 
+## Analisis SQL
+
+Selain dashboard Power BI, saya juga membuat database SQLite (`pangan_idx.db`) dari 4 CSV hasil pengolahan data, supaya bisa latihan sekaligus eksplorasi data pakai SQL murni. Database ini dibangun oleh script `buat_database.py`, yang juga langsung menjalankan 5 contoh query analisis dari `queries.sql`.
+
+### Struktur Tabel
+
+| Tabel | Kolom | Keterangan |
+|---|---|---|
+| `harga_saham` | tanggal, ticker, harga | Hasil ubah `harga_saham_pangan.csv` dari wide ke long format |
+| `return_harian` | tanggal, ticker, return_harian | Hasil ubah `return_harian_pangan.csv` dari wide ke long format |
+| `ringkasan_sektor` | ticker, avg_return_harian, volatilitas, return_kumulatif, tahap_rantai_pasok, periode | Dari `ringkasan_sektor_pangan.csv`, 1 baris per saham per periode |
+| `indikator_teknikal` | tanggal, ticker, harga, ma20, ma50, rsi14, tahap_rantai_pasok | Dari `indikator_teknikal_pangan.csv`, 1 baris per saham per tanggal |
+
+Tabel `harga_saham` dan `return_harian` awalnya berbentuk wide (1 kolom per saham) di CSV, jadi perlu di-*melt* dulu ke long format supaya bisa di-`GROUP BY`/`JOIN` per ticker dengan wajar.
+
+### 5 Query Analisis (`queries.sql`)
+
+1. **Ranking saham per periode** — pakai window function `RANK() OVER (PARTITION BY periode ORDER BY return_kumulatif DESC)` untuk mengurutkan saham dari yang paling unggul ke paling tertinggal, tanpa perlu subquery terpisah per periode.
+2. **Saham dengan volatilitas di atas rata-rata tahapnya** — pakai CTE (`WITH ...`) untuk hitung rata-rata volatilitas per tahap rantai pasok & periode, lalu di-`JOIN` balik ke data detail untuk cari saham yang di atas rata-rata "teman satu tahap"-nya.
+3. **Deteksi golden cross / death cross** — pakai window function `LAG()` untuk membandingkan posisi MA20 vs MA50 hari ini dengan posisi hari sebelumnya, lalu `CASE WHEN` untuk menandai momen persilangan terjadi.
+4. **Jumlah hari overbought vs oversold** — pakai conditional aggregation (`COUNT(CASE WHEN rsi14 > 70 THEN 1 END)`) untuk menghitung berapa hari tiap saham berada di zona RSI ekstrem.
+5. **Perbandingan rata-rata return per tahap (Periode 1 vs 2)** — pakai self-JOIN pada tabel `ringkasan_sektor` untuk menjejerkan data Periode 1 dan Periode 2 dalam satu baris per tahap rantai pasok.
+
+### Insight dari Query
+
+- **Query 1** — JPFA.JK konsisten menempati peringkat 1 di kedua periode observasi (+25,9% di Periode 1, +48,4% di Periode 2), menegaskan lagi temuan dari analisis dashboard bahwa JPFA adalah satu-satunya saham yang menguat stabil di kedua periode.
+- **Query 2** — JPFA.JK dan BISI.JK adalah dua saham yang paling volatil dibanding "teman satu tahap"-nya di kedua periode (JPFA di tahap menengah, BISI di tahap hulu), sementara ICBP dan INDF cuma muncul di salah satu periode saja.
+- **Query 4** — Menariknya, yang paling sering overbought bukan saham individual, melainkan IHSG (^JKSE) sendiri — 122 dari 829 hari observasi, sedikit lebih sering dibanding JPFA.JK (113 hari) di posisi kedua.
+- **Query 3** — Golden cross pada JPFA.JK muncul tanggal **28 Oktober 2024**, cuma 8 hari setelah titik pembagi periode (Oktober 2024) — sejalan dengan performa kuatnya sepanjang Periode 2. Di sisi lain, ada juga fase *whipsaw* (sinyal bolak-balik) pada JPFA.JK di Agustus–September 2023, dengan 6 pergantian sinyal golden/death cross hanya dalam rentang sekitar 2 minggu — tanda tren harga yang belum jelas arahnya di periode itu.
+
+### Cara Menjalankan
+
+```bash
+python buat_database.py
+```
+
+Script ini akan membuat `pangan_idx.db` dari 4 CSV yang ada, lalu langsung menjalankan dan mencetak hasil kelima query di `queries.sql`. Kalau mau eksplorasi manual atau bikin query sendiri, `pangan_idx.db` juga bisa dibuka pakai [DB Browser for SQLite](https://sqlitebrowser.org/) *(opsional)* untuk eksplorasi visual tanpa perlu nulis Python.
+
 ## Dashboard
 
 Dashboard-nya dibuat di Power BI (`dashboard pangan.pbix`), menggabungkan ringkasan return/volatilitas per periode dengan indikator teknikal (harga + MA20/MA50, serta RSI14) untuk tiap saham.
