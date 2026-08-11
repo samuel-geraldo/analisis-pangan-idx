@@ -89,7 +89,10 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ├── queries.sql                       # 5 contoh query analisis SQL
 ├── pangan_idx.db                     # database SQLite hasil buat_database.py
 ├── analisis_lanjutan.ipynb           # notebook analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting)
-├── chart_return_kumulatif.html       # chart interaktif return kumulatif (HTML mandiri)
+├── chart_return_kumulatif.png        # chart return kumulatif per ticker (untuk slide deck)
+├── chart_excess_return_periode2.png  # chart excess return vs IHSG, Periode 2 (untuk slide deck)
+├── chart_sharpe_ratio.png            # chart Sharpe Ratio per ticker (untuk slide deck)
+├── buat_chart_return_kumulatif.py    # script pembuat chart_return_kumulatif.png
 ├── dashboard_pangan.pbix             # file dashboard Power BI
 ├── dashboard_screenshot.png          # screenshot dashboard
 ├── requirements.txt                  # daftar dependency Python
