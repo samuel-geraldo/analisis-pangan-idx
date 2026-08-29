@@ -94,7 +94,8 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ├── chart_sharpe_ratio.png            # chart Sharpe Ratio per ticker (untuk slide deck)
 ├── buat_chart_return_kumulatif.py    # script pembuat chart_return_kumulatif.png
 ├── dashboard_pangan.pbix             # file dashboard Power BI
-├── dashboard_screenshot.png          # screenshot dashboard
+├── dashboard_screenshot_overview.png   # screenshot dashboard - halaman Ringkasan
+├── dashboard_screenshot_teknikal.png   # screenshot dashboard - halaman Tren & Analisa Teknikal
 ├── requirements.txt                  # daftar dependency Python
 ├── LICENSE                           # lisensi MIT
 ├── .gitignore                        # file/folder yang diabaikan git
@@ -153,9 +154,13 @@ Script ini akan membuat `pangan_idx.db` dari 4 CSV yang ada, lalu langsung menja
 
 ## Dashboard
 
-Dashboard-nya dibuat di Power BI (`dashboard_pangan.pbix`), menggabungkan ringkasan return/volatilitas per periode dengan indikator teknikal (harga + MA20/MA50, serta RSI14) untuk tiap saham.
+Dashboard-nya dibuat di Power BI (`dashboard_pangan.pbix`), dipecah jadi 2 halaman: Ringkasan (KPI utama + return kumulatif per saham) dan Tren & Analisa Teknikal (harga + MA20/MA50, serta RSI14 per saham).
 
-![Dashboard Analisis Saham Pangan](dashboard_screenshot.png)
+**Halaman Ringkasan**
+![Dashboard - Ringkasan](dashboard_screenshot_overview.png)
+
+**Halaman Tren & Analisa Teknikal** (contoh dengan ticker JPFA.JK dipilih)
+![Dashboard - Tren dan Analisa Teknikal](dashboard_screenshot_teknikal.png)
 
 ## 🐛 Kendala & Debugging
 
