@@ -12,6 +12,7 @@ Project analisis data untuk melihat bagaimana kinerja saham-saham di rantai paso
 - [Struktur File](#struktur-file)
 - [Indikator Analisis Teknikal](#indikator-analisis-teknikal)
 - [Analisis SQL](#analisis-sql)
+- [Uji Statistik & Regresi](#uji-statistik--regresi)
 - [Dashboard](#dashboard)
 - [Kendala & Debugging](#-kendala--debugging)
 - [Temuan Utama](#-temuan-utama)
@@ -31,6 +32,8 @@ Project ini lahir dari rasa penasaran sederhana: apakah isu swasembada pangan ya
 1. Bagaimana return dan volatilitas saham-saham rantai pasok pangan pada dua periode observasi (sebelum vs sesudah Oktober 2024)?
 2. Apakah sektor pangan menunjukkan kinerja yang berbeda dari pergerakan IHSG secara umum?
 3. Tahap rantai pasok mana (hulu, menengah, hilir) yang menunjukkan performa paling stabil/menguntungkan?
+4. Apakah perbedaan return harian sebelum vs sesudah titik kebijakan (Okt 2024) signifikan secara statistik, dan bagaimana kualitas return-nya secara risk-adjusted (Sharpe ratio)?
+5. Apakah makin dekat posisi sebuah saham ke hulu/hilir rantai pasok pangan berhubungan dengan besarnya return pasca titik kebijakan?
 
 ## Ruang Lingkup Saham
 
@@ -46,8 +49,8 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ## Tools & Teknologi
 
 - **Python** (pandas, yfinance) — pengambilan & pengolahan data
-- **SQL/SQLite** — query & penyimpanan data terstruktur
-- **scikit-learn, scipy** — model forecasting (regresi linear) dan uji statistik (uji-t)
+- **SQL/SQLite** — query & penyimpanan data terstruktur (skema ternormalisasi)
+- **scikit-learn, scipy** — model forecasting (regresi linear) dan uji statistik (uji-t, regresi)
 - **seaborn** — visualisasi statistik (heatmap korelasi, dll.) di notebook
 - **Jupyter Notebook** — analisis lanjutan interaktif (`analisis_lanjutan.ipynb`)
 - **Power BI** — visualisasi dan dashboard
@@ -72,10 +75,18 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
    ```bash
    python buat_database.py
    ```
-6. Untuk analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting), jalankan notebooknya:
+   Ini akan membuat `pangan.db` (skema ternormalisasi: `dim_saham` + 4 tabel fakta) dan langsung menjalankan 5 contoh query dari `queries.sql`.
+6. Lanjutkan dengan uji statistik dan regresi (mengisi tabel `uji_statistik` dan `regresi_kebijakan` di `pangan.db`):
+   ```bash
+   python analisis_statistik.py
+   python regresi_kebijakan.py
+   ```
+7. Untuk analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting), jalankan notebooknya:
    ```bash
    jupyter nbconvert --to notebook --execute --inplace analisis_lanjutan.ipynb
    ```
+
+> Catatan kalau folder project ini disimpan di OneDrive: jalankan langkah 5-6 dari terminal biasa di laptop (bukan lewat automation/agent cloud yang mengakses folder lewat mount jaringan) — SQLite butuh file-locking yang biasanya tidak didukung mulus oleh mount OneDrive/jaringan, dan bisa muncul error `disk I/O error` kalau dipaksakan dari situ.
 
 ## Struktur File
 
@@ -85,9 +96,11 @@ Periode data yang dipakai: **Januari 2023 – sekarang**, dibagi menjadi dua per
 ├── return_harian_pangan.csv          # output: return harian
 ├── ringkasan_sektor_pangan.csv       # output: ringkasan siap dashboard
 ├── indikator_teknikal_pangan.csv     # output: indikator teknikal (MA20, MA50, RSI14)
-├── buat_database.py                  # script bangun database SQLite dari 4 CSV di atas
+├── buat_database.py                  # script bangun database SQLite ternormalisasi dari 4 CSV di atas
 ├── queries.sql                       # 5 contoh query analisis SQL
-├── pangan_idx.db                     # database SQLite hasil buat_database.py
+├── pangan.db                         # database SQLite (dim_saham, harga_saham, return_harian, indikator_teknikal, ringkasan_sektor, uji_statistik, regresi_kebijakan)
+├── analisis_statistik.py             # script uji-t (Welch) & Sharpe ratio per saham -> tabel uji_statistik
+├── regresi_kebijakan.py              # script regresi linear (jarak rantai pasok vs return) -> tabel regresi_kebijakan
 ├── analisis_lanjutan.ipynb           # notebook analisis lanjutan (korelasi, Sharpe Ratio, Max Drawdown, uji-t, forecasting)
 ├── chart_return_kumulatif.png        # chart return kumulatif per ticker (untuk slide deck)
 ├── chart_excess_return_periode2.png  # chart excess return vs IHSG, Periode 2 (untuk slide deck)
@@ -116,16 +129,21 @@ Ketiganya dihitung per saham per tanggal dan disimpan di `indikator_teknikal_pan
 
 ## Analisis SQL
 
-Selain dashboard Power BI, saya juga membuat database SQLite (`pangan_idx.db`) dari 4 CSV hasil pengolahan data, supaya bisa latihan sekaligus eksplorasi data pakai SQL murni. Database ini dibangun oleh script `buat_database.py`, yang juga langsung menjalankan 5 contoh query analisis dari `queries.sql`.
+Selain dashboard Power BI, saya juga membuat database SQLite (`pangan.db`) dari 4 CSV hasil pengolahan data, dengan skema ternormalisasi (tabel dimensi `dim_saham` + tabel fakta), supaya bisa latihan sekaligus eksplorasi data pakai SQL murni. Database ini dibangun oleh script `buat_database.py`, yang juga langsung menjalankan 5 contoh query analisis dari `queries.sql`.
 
 ### Struktur Tabel
 
 | Tabel | Kolom | Keterangan |
 |---|---|---|
+| `dim_saham` | ticker, tahap_rantai_pasok | Tabel dimensi: ticker -> tahap rantai pasok (hulu/menengah/hilir/benchmark) |
 | `harga_saham` | tanggal, ticker, harga | Hasil ubah `harga_saham_pangan.csv` dari wide ke long format |
 | `return_harian` | tanggal, ticker, return_harian | Hasil ubah `return_harian_pangan.csv` dari wide ke long format |
-| `ringkasan_sektor` | ticker, avg_return_harian, volatilitas, return_kumulatif, tahap_rantai_pasok, periode | Dari `ringkasan_sektor_pangan.csv`, 1 baris per saham per periode |
-| `indikator_teknikal` | tanggal, ticker, harga, ma20, ma50, rsi14, tahap_rantai_pasok | Dari `indikator_teknikal_pangan.csv`, 1 baris per saham per tanggal |
+| `indikator_teknikal` | tanggal, ticker, ma20, ma50, rsi14 | Dari `indikator_teknikal_pangan.csv`, 1 baris per saham per tanggal |
+| `ringkasan_sektor` | ticker, periode, rata_rata_return_harian, volatilitas, return_kumulatif | Dari `ringkasan_sektor_pangan.csv`, 1 baris per saham per periode |
+| `uji_statistik` | ticker, p_value, hasil, sharpe_ratio | Hasil uji-t & Sharpe ratio per saham, diisi oleh `analisis_statistik.py` |
+| `regresi_kebijakan` | variabel_x, variabel_y, n_sampel, slope, intercept, r_squared, p_value, std_error | Hasil regresi linear, diisi oleh `regresi_kebijakan.py` |
+
+Semua tabel fakta punya `FOREIGN KEY (ticker) REFERENCES dim_saham(ticker)`, jadi `tahap_rantai_pasok` cukup disimpan sekali di `dim_saham` dan di-`JOIN` saat dibutuhkan, bukan diulang di tiap tabel.
 
 Tabel `harga_saham` dan `return_harian` awalnya berbentuk wide (1 kolom per saham) di CSV, jadi perlu di-*melt* dulu ke long format supaya bisa di-`GROUP BY`/`JOIN` per ticker dengan wajar.
 
@@ -142,7 +160,7 @@ Tabel `harga_saham` dan `return_harian` awalnya berbentuk wide (1 kolom per saha
 - **Query 1** — JPFA.JK konsisten menempati peringkat 1 di kedua periode observasi (+25,9% di Periode 1, +48,4% di Periode 2), menegaskan lagi temuan dari analisis dashboard bahwa JPFA adalah satu-satunya saham yang menguat stabil di kedua periode.
 - **Query 2** — JPFA.JK dan BISI.JK adalah dua saham yang paling volatil dibanding "teman satu tahap"-nya di kedua periode (JPFA di tahap menengah, BISI di tahap hulu), sementara ICBP dan INDF cuma muncul di salah satu periode saja.
 - **Query 4** — Menariknya, yang paling sering overbought bukan saham individual, melainkan IHSG (^JKSE) sendiri — 122 dari 829 hari observasi, sedikit lebih sering dibanding JPFA.JK (113 hari) di posisi kedua.
-- **Query 3** — Golden cross pada JPFA.JK muncul tanggal **28 Oktober 2024**, cuma 8 hari setelah titik pembagi periode (Oktober 2024) — sejalan dengan performa kuatnya sepanjang Periode 2. Di sisi lain, ada juga fase *whipsaw* (sinyal bolak-balik) pada JPFA.JK di Agustus–September 2023, dengan 6 pergantian sinyal golden/death cross hanya dalam rentang sekitar 2 minggu — tanda tren harga yang belum jelas arahnya di periode itu.
+- **Query 3** — Golden cross pada JPFA.JK muncul tanggal **28 Oktober 2024**,� cuma 8 hari setelah titik pembagi periode (Oktober 2024) — sejalan dengan performa kuatnya sepanjang Periode 2. Di sisi lain, ada juga fase *whipsaw* (sinyal bolak-balik) pada JPFA.JK di Agustus–September 2023, dengan 6 pergantian sinyal golden/death cross hanya dalam rentang sekitar 2 minggu — tanda tren harga yang belum jelas arahnya di periode itu.
 
 ### Cara Menjalankan
 
@@ -150,7 +168,20 @@ Tabel `harga_saham` dan `return_harian` awalnya berbentuk wide (1 kolom per saha
 python buat_database.py
 ```
 
-Script ini akan membuat `pangan_idx.db` dari 4 CSV yang ada, lalu langsung menjalankan dan mencetak hasil kelima query di `queries.sql`. Kalau mau eksplorasi manual atau bikin query sendiri, `pangan_idx.db` juga bisa dibuka pakai [DB Browser for SQLite](https://sqlitebrowser.org/) *(opsional)* untuk eksplorasi visual tanpa perlu nulis Python.
+Script ini akan membuat `pangan.db` dari 4 CSV yang ada, lalu langsung menjalankan dan mencetak hasil kelima query di `queries.sql`. Kalau mau eksplorasi manual atau bikin query sendiri, `pangan.db` juga bisa dibuka pakai [DB Browser for SQLite](https://sqlitebrowser.org/) *(opsional)* untuk eksplorasi visual tanpa perlu nulis Python.
+
+## Uji Statistik & Regresi
+
+Selain query SQL deskriptif, ada dua script tambahan yang mengisi database dengan hasil uji statistik formal — supaya klaim "signifikan"/"berpengaruh" di dashboard dan slide deck benar-benar bisa ditelusuri balik ke kode yang menghasilkannya, bukan cuma angka yang nongol di visual.
+
+**`analisis_statistik.py`** — untuk tiap saham (termasuk IHSG), menjalankan **Welch's t-test** (`scipy.stats.ttest_ind`, `equal_var=False`) untuk membandingkan rata-rata return harian sebelum vs sesudah titik kebijakan (20 Oktober 2024), lalu menghitung **Sharpe ratio tahunan** dari return Periode 2. Hasilnya disimpan ke tabel `uji_statistik`.
+
+**`regresi_kebijakan.py`** — menguji apakah posisi sebuah saham di rantai pasok pangan (hulu=1, menengah=2, hilir=3, IHSG dikeluarkan karena bukan bagian rantai pasok) berhubungan secara linear dengan besar return kumulatifnya di Periode 2, pakai `scipy.stats.linregress`. Hasilnya disimpan ke tabel `regresi_kebijakan`.
+
+### Hasil
+
+- **Uji-t**: p-value ketujuh saham/indeks semuanya di atas 0,05 ("H0 gagal ditolak") — artinya, walaupun beberapa saham (BISI, ICBP, CPIN) terlihat anjlok drastis di Periode 2, secara statistik perbedaan rata-rata return hariannya **belum cukup kuat untuk dibilang signifikan** dibanding fluktuasi normal saham itu sendiri. Sharpe ratio Periode 2 berkisar dari -1,10 (BISI, paling buruk) sampai +0,74 (JPFA, paling baik).
+- **Regresi**: hasilnya **R² = 0,0001** dan **p-value = 0,986** (n = 6 saham) — praktis tidak ada hubungan linear antara posisi hulu/menengah/hilir dengan besar return Periode 2. Perlu digarisbawahi: ini uji dengan sampel sangat kecil (cuma 6 titik data, 1 per saham), jadi hasil non-signifikan ini lebih tepat dibaca sebagai "belum ada bukti hubungan linear sederhana dari data yang ada" — bukan kesimpulan kuat bahwa posisi rantai pasok tidak relevan sama sekali. Performa JPFA yang menonjol di Periode 2 kelihatannya lebih ditentukan faktor spesifik perusahaan (lihat bagian Temuan Utama) daripada pola posisi rantai pasok secara umum.
 
 ## Dashboard
 
@@ -168,7 +199,7 @@ Beberapa bug yang cukup bikin bingung selama pengerjaan, siapa tahu berguna buat
 
 **1. Power BI salah baca angka desimal dari CSV Python — jadi miliaran**
 
-CSV yang dihasilkan Python pakai format desimal ala Amerika (titik sebagai pemisah desimal, misalnya `0.0757` untuk 7.57%). Masalahnya, Power BI di laptop saya default-nya pakai locale Indonesia, yang menganggap titik sebagai pemisah ribuan. Akibatnya angka return kumulatif yang seharusnya kecil malah membengkak jadi ratusan ribu bahkan miliaran saat diimpor — sempat bikin panik karena dikira ada kesalahan hitung di script Python-nya, padahal datanya sendiri sudah benar.
+CSV yang dihasilkan Python pakai format desimal ala Amerika (titik sebagai pemisah desimal, misalnya `0.0757` untuk 7.57%). Masalahnya, Power BI di laptop saya default-nya pakai locale Indonesia, yang menganggap titik sebagai pemisah ribuan. Akibatnya angka return kumulatif yang seharusnya kecil malah membenkak jadi ratusan ribu bahkan miliaran saat diimpor — sempat bikin panik karena dikira ada kesalahan hitung di script Python-nya, padahal datanya sendiri sudah benar.
 
 Fix-nya ternyata sederhana: saat import CSV di Power BI (Get Data → Text/CSV), ubah setting *locale/origin* ke "English (United States)" supaya titik tetap dibaca sebagai pemisah desimal sesuai format aslinya. Setelah itu angka langsung normal kembali.
 
@@ -184,12 +215,19 @@ Waktu mengisi teks markdown ke notebook (`analisis_lanjutan.ipynb`) lewat script
 
 Penyebabnya: heredoc Bash di lingkungan Windows ini salah men-decode konten UTF-8 sebelum diteruskan ke Python, jadi karakter multi-byte di luar ASCII rusak duluan sebelum sempat ditulis ke file. Fix-nya: hindari heredoc untuk konten yang mengandung karakter non-ASCII — tulis script Python-nya sebagai file `.py` biasa terlebih dahulu (encoding UTF-8 dijamin oleh editor/tool penulis file), baru dijalankan. Setelah itu semua karakter khusus tersimpan utuh.
 
+**4. SQLite `disk I/O error` saat database diakses lewat mount OneDrive/jaringan**
+
+Saat membangun ulang `pangan.db` dari automation yang mengakses folder project lewat mount jaringan (bukan filesystem lokal langsung), `sqlite3.OperationalError: disk I/O error` muncul persis di langkah `CREATE TABLE` pertama — padahal skrip yang sama jalan mulus di filesystem lokal biasa. Penyebabnya: SQLite butuh mekanisme file-locking level OS yang tidak selalu didukung penuh oleh mount jaringan/cloud-sync seperti OneDrive.
+
+Fix/workaround: bangun database di direktori lokal biasa dulu, baru salin file `.db` hasilnya ke folder project — proses *copy file* biasa tidak butuh file-locking seperti koneksi SQLite langsung, jadi aman dilakukan lewat mount jaringan. Untuk penggunaan sehari-hari, tetap disarankan menjalankan `buat_database.py`, `analisis_statistik.py`, dan `regresi_kebijakan.py` langsung dari terminal lokal di laptop.
+
 ## 💡 Temuan Utama
 
 - **JPFA konsisten unggul di kedua periode observasi** — return kumulatif JPFA tercatat +25,9% pada Periode 1 (sebelum Okt 2024) dan naik lagi menjadi +48,4% pada Periode 2 (sesudah Okt 2024), menjadikannya satu-satunya saham di daftar yang mencatat performa positif dan menguat di kedua periode.
 - **ICBP dan BISI melemah tajam pasca Oktober 2024.** ICBP berbalik dari +30,7% (Periode 1) menjadi -42,6% (Periode 2), sementara BISI turun dari -2,9% menjadi -50,3% pada rentang yang sama — pembalikan tren yang cukup signifikan di kedua saham ini.
 - Menariknya, tahap menengah (peternakan/pakan) justru menunjukkan performa paling beragam: JPFA menguat tajam, tapi CPIN malah melemah dari -7,9% menjadi -34,7%. Jadi performa di tahap ini kelihatannya lebih ditentukan oleh faktor spesifik masing-masing perusahaan, bukan tren sektor secara keseluruhan.
 - Secara umum, sektor pangan melemah lebih dalam dibanding IHSG pada Periode 2 — IHSG turun -20,4% sementara mayoritas saham pangan (BISI, CPIN, ICBP) turun lebih dalam lagi, kecuali JPFA dan AALI yang justru menguat di periode yang sama.
+- **Tapi secara statistik, pergerakan-pergerakan besar ini belum terbukti signifikan.** Uji-t Welch untuk ketujuh saham/indeks semuanya menghasilkan p-value > 0,05 — jadi walau angkanya kelihatan dramatis di permukaan, itu belum cukup kuat dibedakan dari fluktuasi normal saham itu sendiri secara statistik. Begitu juga regresi posisi rantai pasok (hulu/menengah/hilir) terhadap return Periode 2 tidak menunjukkan hubungan linear yang berarti (R² = 0,0001, p = 0,986, n = 6) — sinyal bahwa performa tiap saham lebih didorong faktor spesifik perusahaan (lihat poin JPFA vs CPIN di atas) daripada posisi rantai pasoknya semata. Ini jadi pengingat penting soal batas generalisasi dari data harga saham jangka pendek dan sampel yang kecil.
 
 ## Catatan
 
